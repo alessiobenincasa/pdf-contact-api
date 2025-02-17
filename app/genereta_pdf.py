@@ -1,39 +1,75 @@
+import random
+import os
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from PIL import Image, ImageDraw, ImageFont
-import pytesseract
-import io
 
-def create_pdf_without_ocr(filename):
+def generate_random_contact():
     """
-    Crée un PDF contenant uniquement du texte normal (sans OCR).
+    Génère aléatoirement des informations de contact.
+    """
+    first_names = ["Jean", "Marie", "Pierre", "Sophie", "Luc", "Anne", "Julien", "Camille", "Nathalie", "Eric"]
+    last_names = ["Dupont", "Martin", "Durand", "Lefevre", "Moreau", "Laurent", "Girard", "Roux", "Bertrand", "Faure"]
+    streets = ["rue de Paris", "avenue des Champs", "boulevard Saint-Germain", "rue Lafayette", "rue Victor Hugo"]
+    cities = ["Paris", "Lyon", "Marseille", "Nice", "Bordeaux", "Toulouse"]
+    
+    name = random.choice(first_names) + " " + random.choice(last_names)
+    email = name.lower().replace(" ", ".") + "@example.com"
+    telephone = "+33 " + "".join(str(random.randint(0, 9)) for _ in range(9))
+    street_number = random.randint(1, 200)
+    street = random.choice(streets)
+    city = random.choice(cities)
+    zipcode = random.randint(75000, 75999) if city == "Paris" else random.randint(10000, 99999)
+    address = f"{street_number} {street}, {zipcode} {city}"
+    
+    return name, email, telephone, address
+
+def create_mixed_contact_pdf(filename, num_pages=4):
+    """
+    Crée un PDF multi-pages contenant un mélange de pages avec texte natif
+    et de pages avec texte sous forme d'image (simulant un contenu nécessitant l'OCR).
+    Chaque page affiche des informations de contact générées aléatoirement.
     """
     c = canvas.Canvas(filename, pagesize=letter)
-    c.drawString(100, 750, "Ceci est un fichier PDF de test sans OCR.")
-    c.drawString(100, 730, "Il a été généré par Python avec ReportLab.")
+    width, height = letter
+    
+    for i in range(num_pages):
+        name, email, telephone, address = generate_random_contact()
+        contact_text = (
+            f"Nom: {name}\n"
+            f"Email: {email}\n"
+            f"Téléphone: {telephone}\n"
+            f"Adresse: {address}"
+        )
+        
+        use_native = random.choice([True, False])
+        
+        if use_native:
+            y = height - 100
+            for line in contact_text.split("\n"):
+                c.drawString(100, y, line)
+                y -= 20
+            c.drawString(100, y - 20, "(Texte natif)")
+        else:
+            img = Image.new('RGB', (int(width), int(height)), color='white')
+            d = ImageDraw.Draw(img)
+            font = ImageFont.load_default()
+            y = 100
+            for line in contact_text.split("\n"):
+                d.text((50, y), line, fill="black", font=font)
+                y += 20
+            d.text((50, y + 20), "(Texte dans une image pour OCR)", fill="black", font=font)
+            
+            temp_img_path = "temp_contact.png"
+            img.save(temp_img_path)
+            c.drawImage(temp_img_path, 0, 0, width=width, height=height)
+            os.remove(temp_img_path)
+        
+        c.showPage()
+    
     c.save()
-    print(f"Le fichier {filename} a été généré sans OCR.")
-
-def create_pdf_with_ocr(filename):
-    """
-    Crée un PDF avec du texte généré sous forme d'image, pour un usage OCR.
-    """
-    img = Image.new('RGB', (612, 792), color='white')
-    d = ImageDraw.Draw(img)
-    font = ImageFont.load_default()
-
-    text = "Ceci est un fichier PDF de test avec OCR simulé."
-    d.text((100, 750), text, fill=(0, 0, 0), font=font)
-
-    img_path = "/tmp/temp_image.png"
-    img.save(img_path)
-
-    c = canvas.Canvas(filename, pagesize=letter)
-    c.drawImage(img_path, 0, 0, width=612, height=792)
-    c.save()
-
-    print(f"Le fichier {filename} a été généré avec OCR simulé.")
+    print(f"Le PDF '{filename}' a été généré avec {num_pages} pages mixtes.")
 
 if __name__ == "__main__":
-    create_pdf_without_ocr("test_without_ocr.pdf")
-    create_pdf_with_ocr("test_with_ocr.pdf")
+    create_mixed_contact_pdf("mixed_contacts.pdf", num_pages=4)
+

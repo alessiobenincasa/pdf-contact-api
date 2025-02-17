@@ -18,7 +18,6 @@ def create_pdf_with_ocr(filename):
     """
     Crée un PDF avec du texte généré sous forme d'image, pour un usage OCR.
     """
-    # Créer une image contenant du texte
     img = Image.new('RGB', (612, 792), color='white')
     d = ImageDraw.Draw(img)
     font = ImageFont.load_default()
@@ -26,11 +25,9 @@ def create_pdf_with_ocr(filename):
     text = "Ceci est un fichier PDF de test avec OCR simulé."
     d.text((100, 750), text, fill=(0, 0, 0), font=font)
 
-    # Sauvegarder l'image en mémoire
     img_path = "/tmp/temp_image.png"
     img.save(img_path)
 
-    # Convertir l'image en PDF
     c = canvas.Canvas(filename, pagesize=letter)
     c.drawImage(img_path, 0, 0, width=612, height=792)
     c.save()

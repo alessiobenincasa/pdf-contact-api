@@ -9,7 +9,7 @@ HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 if not HUGGINGFACE_API_KEY:
     raise ValueError("La clé API Hugging Face n'est pas définie. Vérifie ton fichier .env.")
 
-MODEL = "google/flan-t5-small" 
+MODEL = "facebook/bart-large-cnn"
 
 def extract_contacts_with_hf(text: str) -> dict:
     """
@@ -17,9 +17,7 @@ def extract_contacts_with_hf(text: str) -> dict:
     Retourne un JSON structuré avec Nom, Email, Téléphone, Adresse.
     """
     prompt = f"""
-    Tu es un assistant expert en extraction d'informations de contact.
-    À partir du texte suivant, identifie et structure les informations de contact (Nom, Email, Téléphone, Adresse) 
-    et renvoie-les uniquement au format JSON, sans explications.
+    Extrait les informations de contact du texte suivant au format JSON :
 
     Texte :
     {text}
@@ -32,15 +30,17 @@ def extract_contacts_with_hf(text: str) -> dict:
         "adresse": "123 rue Exemple, Paris"
     }}
     """
-    
+
     API_URL = f"https://api-inference.huggingface.co/models/{MODEL}"
     headers = {"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"}
     payload = {"inputs": prompt}
-    
+
     response = requests.post(API_URL, headers=headers, json=payload)
-    
+
     try:
-        return response.json()
+        response_json = response.json()
+        print("Réponse de l'API Hugging Face :", json.dumps(response_json, indent=4)) 
+        return response_json
     except Exception as e:
         return {"error": str(e)}
 

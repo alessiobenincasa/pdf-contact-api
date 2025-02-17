@@ -12,7 +12,7 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     Si le texte natif est présent, il est extrait. Sinon, OCR est effectué sur les pages sans texte natif.
     """
     text = ""
-    
+
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         for page in pdf.pages:
             page_text = page.extract_text()
@@ -20,7 +20,7 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
                 text += page_text + "\n"
             else:
                 text += perform_ocr_for_page(pdf_bytes, page) + "\n"
-    
+
     return text.strip()
 
 def perform_ocr_for_page(pdf_bytes: bytes, page) -> str:
@@ -30,10 +30,10 @@ def perform_ocr_for_page(pdf_bytes: bytes, page) -> str:
     with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_pdf_file:
         tmp_pdf_file.write(pdf_bytes)
         tmp_pdf_path = tmp_pdf_file.name
-    
+
     try:
         images = convert_from_path(tmp_pdf_path, first_page=page.page_number, last_page=page.page_number)
-        
+
         text = image_to_text(images[0])
         return text.strip()
     finally:

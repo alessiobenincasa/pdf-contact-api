@@ -1,53 +1,46 @@
-import os
-from dotenv import load_dotenv
-import json
-import requests
+from llama_cpp import Llama
 
-load_dotenv()
+llm = Llama.from_pretrained(
+    repo_id="TheBloke/CapybaraHermes-2.5-Mistral-7B-GGUF",
+    filename="capybarahermes-2.5-mistral-7b.Q2_K.gguf",
+)
 
-HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
-if not HUGGINGFACE_API_KEY:
-    raise ValueError("La clé API Hugging Face n'est pas définie. Vérifie ton fichier .env.")
-
-MODEL = "facebook/bart-large-cnn"
-
-def extract_contacts_with_hf(text: str) -> dict:
+def extract_contacts_with_hf(
+    text: str, 
+    max_tokens: int = 1024,
+    temperature: float = 0.7, 
+    top_p: float = 0.95
+) -> str:
     """
-    Utilise l'API Hugging Face pour extraire et structurer les informations de contact présentes dans le texte.
-    Retourne un JSON structuré avec Nom, Email, Téléphone, Adresse.
+    Utilise le modèle CapybaraHermes pour extraire toutes les informations de contact depuis le texte donné.
     """
-    prompt = f"""
-    Extrait les informations de contact du texte suivant au format JSON :
-
-    Texte :
-    {text}
-
-    Format attendu :
-    {{
-        "nom": "Nom de la personne",
-        "email": "email@example.com",
-        "telephone": "+33123456789",
-        "adresse": "123 rue Exemple, Paris"
-    }}
-    """
-
-    API_URL = f"https://api-inference.huggingface.co/models/{MODEL}"
-    headers = {"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"}
-    payload = {"inputs": prompt}
-
-    response = requests.post(API_URL, headers=headers, json=payload)
+    prompt = (
+        "Extrait TOUS les contacts dans le texte suivant, y compris leurs noms, emails, téléphones et adresses. "
+        "Il est essentiel de ne manquer AUCUN contact, même s'il y en a plusieurs. "
+        "Retourne le résultat en format JSON, chaque contact doit avoir les informations suivantes : "
+        "\"Nom\", \"Email\", \"Téléphone\", et \"Adresse\". Si une information est manquante, la valeur doit être vide. "
+        "N'oublie pas de gérer correctement la ponctuation et l'espace dans les adresses email. "
+        "Assure-toi d'extraire tous les contacts du texte, même ceux mal formatés.\n\n"
+        f"{text}\n\n"
+        "JSON:"
+    )
 
     try:
-        response_json = response.json()
-        print("Réponse de l'API Hugging Face :", json.dumps(response_json, indent=4)) 
-        return response_json
+        response = llm.create_chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+        )
+        
+        response_text = (
+            response.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+            .strip()
+        )
+        return response_text
     except Exception as e:
-        return {"error": str(e)}
+        print("Error during LLM query:", e)
+        return "{}"
 
-if __name__ == "__main__":
-    texte_exemple = (
-        "Jean Dupont, 45 rue Lafayette, Paris. "
-        "Contact: jean.dupont@example.com, +33 6 12 34 56 78."
-    )
-    result = extract_contacts_with_hf(texte_exemple)
-    print(json.dumps(result, indent=4))
